@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+dist/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Drizzle
+drizzle/meta/
+
+# Turbo
+.turbo/

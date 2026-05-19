@@ -1,0 +1,14 @@
+{
+  "name": "captionsan",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @captionsan/* dev",
+    "build": "pnpm --filter @captionsan/* build",
+    "db:generate": "pnpm --filter @captionsan/db generate",
+    "db:migrate": "pnpm --filter @captionsan/db migrate",
+    "db:push": "pnpm --filter @captionsan/db push"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
