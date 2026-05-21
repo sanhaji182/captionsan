@@ -2,6 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Field, Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
+import {
+  CheckIcon,
+  ClipboardIcon,
+  KeyIcon,
+  PlusIcon,
+  TrashIcon,
+  XIcon,
+} from '@/components/ui/icons';
 
 interface ApiToken {
   id: string;
@@ -18,12 +29,11 @@ export function ApiTokenList() {
   const [name, setName] = useState('');
   const [newTokenValue, setNewTokenValue] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchTokens = useCallback(async () => {
     const { data } = await apiFetch<{ tokens: ApiToken[] }>('/api/tokens');
-    if (data) {
-      setTokens(data.tokens);
-    }
+    if (data) setTokens(data.tokens);
     setLoading(false);
   }, []);
 
@@ -36,13 +46,12 @@ export function ApiTokenList() {
     if (!name.trim()) return;
     setSubmitting(true);
 
-    const { data } = await apiFetch<{ token: ApiToken & { value: string } }>(
-      '/api/tokens',
-      {
-        method: 'POST',
-        body: JSON.stringify({ name }),
-      }
-    );
+    const { data } = await apiFetch<{
+      token: ApiToken & { value: string };
+    }>('/api/tokens', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
 
     if (data) {
       setNewTokenValue(data.token.value);
@@ -59,112 +68,149 @@ export function ApiTokenList() {
     fetchTokens();
   };
 
+  const handleCopyToken = async () => {
+    if (!newTokenValue) return;
+    await navigator.clipboard.writeText(newTokenValue);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (loading) {
-    return <p className="text-sm text-gray-500">Memuat token...</p>;
+    return <p className="text-sm text-foreground-muted">Memuat token...</p>;
   }
 
   return (
     <div className="space-y-4">
       {newTokenValue && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-          <p className="text-sm font-medium text-yellow-800 mb-2">
-            Token berhasil dibuat. Salin sekarang — tidak akan ditampilkan lagi.
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded bg-white px-3 py-2 text-xs font-mono border border-yellow-200 break-all">
-              {newTokenValue}
-            </code>
+        <div className="rounded-md border border-warning/30 bg-warning-soft p-4 animate-in-fade">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-warning">
+                Token berhasil dibuat
+              </p>
+              <p className="mt-0.5 text-xs text-foreground-muted">
+                Salin sekarang. Token tidak akan ditampilkan lagi setelah
+                ditutup.
+              </p>
+            </div>
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(newTokenValue);
-              }}
-              className="rounded border border-yellow-300 px-3 py-1.5 text-xs hover:bg-yellow-100"
+              type="button"
+              onClick={() => setNewTokenValue(null)}
+              className="rounded-sm p-1 text-foreground-subtle hover:bg-surface-raised hover:text-foreground"
+              aria-label="Tutup"
             >
-              Salin
+              <XIcon size={14} />
             </button>
           </div>
-          <button
-            onClick={() => setNewTokenValue(null)}
-            className="mt-2 text-xs text-yellow-700 hover:underline"
-          >
-            Tutup
-          </button>
+          <div className="mt-3 flex items-center gap-2">
+            <code className="flex-1 break-all rounded-sm border border-border bg-surface-raised px-3 py-2 font-mono text-xs text-foreground">
+              {newTokenValue}
+            </code>
+            <Button variant="secondary" size="sm" onClick={handleCopyToken}>
+              {copied ? (
+                <>
+                  <CheckIcon size={14} />
+                  Disalin
+                </>
+              ) : (
+                <>
+                  <ClipboardIcon size={14} />
+                  Salin
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       )}
 
       {tokens.length === 0 && !showForm && (
-        <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
-          <p className="text-sm text-gray-500 mb-4">
-            Belum ada API token. Token digunakan untuk akses API eksternal.
-          </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors"
-          >
-            Buat Token
-          </button>
-        </div>
+        <EmptyState
+          icon={<KeyIcon size={18} />}
+          title="Belum ada API token"
+          description="Token digunakan untuk mengakses CaptionSan API dari pipeline atau aplikasi eksternal."
+          action={
+            <Button onClick={() => setShowForm(true)}>
+              <PlusIcon size={14} />
+              Buat Token
+            </Button>
+          }
+        />
       )}
 
-      {tokens.map((token) => (
-        <div key={token.id} className="rounded-lg border border-gray-200 bg-white p-4 flex items-center justify-between">
-          <div>
-            <p className="font-medium text-sm">{token.name}</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Dibuat {new Date(token.createdAt).toLocaleDateString('id-ID')}
-              {token.lastUsedAt && ` · Terakhir digunakan ${new Date(token.lastUsedAt).toLocaleDateString('id-ID')}`}
-              {token.expiresAt && ` · Kedaluwarsa ${new Date(token.expiresAt).toLocaleDateString('id-ID')}`}
-            </p>
-          </div>
-          <button
-            onClick={() => handleDelete(token.id)}
-            className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 transition-colors"
-          >
-            Hapus
-          </button>
-        </div>
-      ))}
+      {tokens.length > 0 && (
+        <ul className="space-y-2">
+          {tokens.map((token) => (
+            <li
+              key={token.id}
+              className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3 shadow-xs"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {token.name}
+                </p>
+                <p className="mt-0.5 text-xs text-foreground-subtle">
+                  Dibuat{' '}
+                  {new Date(token.createdAt).toLocaleDateString('id-ID')}
+                  {token.lastUsedAt &&
+                    ` · Terakhir digunakan ${new Date(
+                      token.lastUsedAt,
+                    ).toLocaleDateString('id-ID')}`}
+                  {token.expiresAt &&
+                    ` · Kedaluwarsa ${new Date(
+                      token.expiresAt,
+                    ).toLocaleDateString('id-ID')}`}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(token.id)}
+                className="text-danger hover:bg-danger-soft hover:text-danger"
+              >
+                <TrashIcon size={14} />
+                Hapus
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {tokens.length > 0 && !showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-        >
-          + Buat Token Baru
-        </button>
+        <Button variant="secondary" onClick={() => setShowForm(true)}>
+          <PlusIcon size={14} />
+          Buat Token Baru
+        </Button>
       )}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-          <div>
-            <label htmlFor="tokenName" className="block text-sm font-medium text-gray-700 mb-1">
-              Nama Token
-            </label>
-            <input
+        <form
+          onSubmit={handleCreate}
+          className="space-y-4 rounded-md border border-border bg-surface-sunken/40 p-4 animate-in-fade"
+        >
+          <Field label="Nama Token" htmlFor="tokenName">
+            <Input
               id="tokenName"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               placeholder="Contoh: Content Pipeline"
             />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
-            >
-              {submitting ? 'Membuat...' : 'Buat'}
-            </button>
-            <button
+          </Field>
+          <div className="flex items-center gap-2">
+            <Button type="submit" loading={submitting}>
+              {submitting ? 'Membuat...' : 'Buat Token'}
+            </Button>
+            <Button
               type="button"
-              onClick={() => setShowForm(false)}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+              variant="ghost"
+              onClick={() => {
+                setShowForm(false);
+                setName('');
+              }}
             >
               Batal
-            </button>
+            </Button>
           </div>
         </form>
       )}

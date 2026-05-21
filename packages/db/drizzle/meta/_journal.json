@@ -8,6 +8,41 @@
       "when": 1779183265601,
       "tag": "0000_unknown_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779200908267,
+      "tag": "0001_steady_kinsey_walden",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779244955192,
+      "tag": "0002_minor_kat_farrell",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779248961930,
+      "tag": "0003_uneven_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779251757870,
+      "tag": "0004_bitter_demogoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779265348924,
+      "tag": "0005_narrow_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

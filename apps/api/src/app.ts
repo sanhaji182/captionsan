@@ -8,7 +8,13 @@ import { providerRoutes } from './routes/providers.js';
 import { projectRoutes } from './routes/projects.js';
 import { generationRoutes } from './routes/generations.js';
 import { revisionRoutes } from './routes/revisions.js';
+import { promptRoutes } from './routes/prompts.js';
 import { apiTokenRoutes } from './routes/api-tokens.js';
+import { brandVoiceRoutes } from './routes/brand-voices.js';
+import { promptTemplateRoutes } from './routes/prompt-templates.js';
+import { versionHistoryRoutes } from './routes/version-history.js';
+import { operationsRoutes } from './routes/operations.js';
+import { reviewCallbackRoutes } from './routes/review-callbacks.js';
 import { v1Routes } from './routes/v1/index.js';
 import { setupRoutes } from './scripts/setup.js';
 
@@ -32,7 +38,13 @@ app.route('/api/providers', providerRoutes);
 app.route('/api/projects', projectRoutes);
 app.route('/api/generations', generationRoutes);
 app.route('/api/outputs', revisionRoutes);
+app.route('/api/projects', promptRoutes);
 app.route('/api/tokens', apiTokenRoutes);
+app.route('/api/brand-voices', brandVoiceRoutes);
+app.route('/api/prompt-templates', promptTemplateRoutes);
+app.route('/api/history', versionHistoryRoutes);
+app.route('/api/operations', operationsRoutes);
+app.route('/api/review-callbacks', reviewCallbackRoutes);
 app.route('/api/setup', setupRoutes);
 
 // Stable external API (v1)

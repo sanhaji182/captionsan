@@ -1,10 +1,12 @@
 import { pgTable, text, timestamp, uuid, integer } from 'drizzle-orm/pg-core';
 import { projects } from './projects.js';
 import { providerConnections } from './providers.js';
+import { promptDrafts } from './prompt-drafts.js';
 
 export const generations = pgTable('generations', {
   id: uuid('id').primaryKey().defaultRandom(),
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  promptDraftId: uuid('prompt_draft_id').references(() => promptDrafts.id),
   providerConnectionId: uuid('provider_connection_id').references(() => providerConnections.id),
   promptVersion: text('prompt_version').notNull().default('v1'),
   generationStatus: text('generation_status').notNull().default('queued'),
@@ -25,7 +27,7 @@ export const platformOutputs = pgTable('platform_outputs', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const revisionMessages = pgTable('revision_messages', {
+export const contentRevisions = pgTable('revision_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   platformOutputId: uuid('platform_output_id').notNull().references(() => platformOutputs.id, { onDelete: 'cascade' }),
   actorType: text('actor_type').notNull(),
@@ -33,3 +35,6 @@ export const revisionMessages = pgTable('revision_messages', {
   resultingContent: text('resulting_content').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+/** @deprecated Use `contentRevisions` instead */
+export const revisionMessages = contentRevisions;

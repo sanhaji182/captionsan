@@ -5,12 +5,16 @@ import {
   providerConnections,
   generations,
   platformOutputs,
+  promptDrafts,
+  brandVoices,
 } from '@captionsan/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
 import { decrypt } from '../lib/encryption.js';
 import { AIClient, buildGenerationPrompt, PLATFORM_CONFIGS } from '../lib/ai/index.js';
 import type { Platform } from '../lib/ai/index.js';
+import type { BrandVoiceInput } from '../lib/ai/prompt-generator.js';
+import { recordContentSnapshot } from './version-history.js';
 
 export const generationRoutes = new Hono();
 
@@ -44,6 +48,26 @@ generationRoutes.post('/', requireAuth, async (c) => {
 
   if (!project) {
     return c.json({ error: 'Project not found' }, 404);
+  }
+
+  // Check for an approved prompt draft
+  const [approvedPromptDraft] = await db
+    .select()
+    .from(promptDrafts)
+    .where(
+      and(
+        eq(promptDrafts.projectId, body.projectId),
+        eq(promptDrafts.promptApproved, true)
+      )
+    )
+    .orderBy(desc(promptDrafts.createdAt))
+    .limit(1);
+
+  if (!approvedPromptDraft) {
+    return c.json(
+      { error: 'Prompt must be approved before generating content' },
+      400
+    );
   }
 
   // Get provider connection
@@ -85,6 +109,7 @@ generationRoutes.post('/', requireAuth, async (c) => {
     .insert(generations)
     .values({
       projectId: project.id,
+      promptDraftId: approvedPromptDraft.id,
       providerConnectionId: providerConnection.id,
       promptVersion: 'v1',
       generationStatus: 'processing',
@@ -105,6 +130,31 @@ generationRoutes.post('/', requireAuth, async (c) => {
     apiKey,
   });
 
+  // Fetch user's default brand voice (if any)
+  const [defaultBrandVoice] = await db
+    .select()
+    .from(brandVoices)
+    .where(
+      and(
+        eq(brandVoices.userId, user.id),
+        eq(brandVoices.isDefault, true)
+      )
+    )
+    .limit(1);
+
+  const brandVoiceInput: BrandVoiceInput | undefined = defaultBrandVoice
+    ? {
+        name: defaultBrandVoice.name,
+        tone: defaultBrandVoice.tone,
+        styleRules: defaultBrandVoice.styleRules,
+        audience: defaultBrandVoice.audience,
+        bannedWords: (defaultBrandVoice.bannedWords as string[]) || [],
+        ctaPreferences: defaultBrandVoice.ctaPreferences,
+        languageStyle: defaultBrandVoice.languageStyle,
+        contentLengthGuidance: defaultBrandVoice.contentLengthGuidance,
+      }
+    : undefined;
+
   // Generate for each platform
   const outputs: Array<{
     platform: Platform;
@@ -121,6 +171,8 @@ generationRoutes.post('/', requireAuth, async (c) => {
           sourceType: project.sourceType as 'idea' | 'draft',
           additionalContext: project.additionalContext || undefined,
           platforms: body.platforms,
+          approvedPrompt: approvedPromptDraft.promptCurrent,
+          brandVoice: brandVoiceInput,
         },
         platform
       );
@@ -141,7 +193,7 @@ generationRoutes.post('/', requireAuth, async (c) => {
 
   // Store outputs
   if (outputs.length > 0) {
-    await db.insert(platformOutputs).values(
+    const insertedOutputs = await db.insert(platformOutputs).values(
       outputs.map((output) => ({
         generationId: generation.id,
         platform: output.platform,
@@ -152,7 +204,20 @@ generationRoutes.post('/', requireAuth, async (c) => {
         contentCurrent: output.content,
         approvalStatus: 'draft' as const,
       }))
-    );
+    ).returning();
+
+    // Record initial content version snapshots
+    for (const inserted of insertedOutputs) {
+      await recordContentSnapshot({
+        outputId: inserted.id,
+        projectId: project.id,
+        content: inserted.contentOriginalAi,
+        actorType: 'ai',
+        label: 'Konten AI Original',
+        status: 'draft',
+        platform: inserted.platform,
+      });
+    }
   }
 
   // Update generation status
@@ -165,7 +230,7 @@ generationRoutes.post('/', requireAuth, async (c) => {
   // Update project status
   await db
     .update(projects)
-    .set({ status: 'review', updatedAt: new Date() })
+    .set({ status: 'content_review', updatedAt: new Date() })
     .where(eq(projects.id, project.id));
 
   return c.json({

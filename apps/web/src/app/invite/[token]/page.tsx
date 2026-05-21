@@ -1,14 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
+import Link from 'next/link';
 import { signUp } from '@/lib/auth-client';
-import { use } from 'react';
+import { Button } from '@/components/ui/button';
+import { Field, Input } from '@/components/ui/input';
+import { CheckCircleIcon, SparklesIcon, XIcon } from '@/components/ui/icons';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
+export default function InvitePage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
   const { token } = use(params);
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'accepted'>('loading');
+  const [status, setStatus] = useState<
+    'loading' | 'valid' | 'invalid' | 'accepted'
+  >('loading');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -39,10 +48,10 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     setSubmitting(true);
 
     try {
-      // Accept the invitation
-      const acceptRes = await fetch(`${API_URL}/api/invitations/accept/${token}`, {
-        method: 'POST',
-      });
+      const acceptRes = await fetch(
+        `${API_URL}/api/invitations/accept/${token}`,
+        { method: 'POST' },
+      );
 
       if (!acceptRes.ok) {
         setError('Undangan tidak valid atau sudah kedaluwarsa.');
@@ -50,7 +59,6 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         return;
       }
 
-      // Create account
       const result = await signUp.email({ email, password, name });
       if (result.error) {
         setError(result.error.message || 'Gagal membuat akun.');
@@ -70,19 +78,30 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   if (status === 'loading') {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Memvalidasi undangan...</p>
+        <p className="text-sm text-foreground-muted">Memvalidasi undangan...</p>
       </main>
     );
   }
 
   if (status === 'invalid') {
     return (
-      <main className="flex min-h-screen items-center justify-center p-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Undangan Tidak Valid</h1>
-          <p className="mt-2 text-gray-600">
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center animate-in-fade">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-danger-soft text-danger">
+            <XIcon size={20} />
+          </div>
+          <h1 className="display mt-4 text-2xl font-semibold text-foreground">
+            Undangan Tidak Valid
+          </h1>
+          <p className="mt-2 text-sm text-foreground-muted">
             Link undangan ini tidak valid atau sudah kedaluwarsa.
           </p>
+          <Link
+            href="/"
+            className="mt-6 inline-block text-sm font-medium text-brand hover:opacity-80"
+          >
+            Kembali ke beranda
+          </Link>
         </div>
       </main>
     );
@@ -90,66 +109,82 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
   if (status === 'accepted') {
     return (
-      <main className="flex min-h-screen items-center justify-center p-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-green-600">Berhasil!</h1>
-          <p className="mt-2 text-gray-600">Akun berhasil dibuat. Mengalihkan...</p>
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center animate-in-fade">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
+            <CheckCircleIcon size={22} />
+          </div>
+          <h1 className="display mt-4 text-2xl font-semibold text-foreground">
+            Berhasil!
+          </h1>
+          <p className="mt-2 text-sm text-foreground-muted">
+            Akun berhasil dibuat. Mengalihkan ke dashboard...
+          </p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center mb-2">Terima Undangan</h1>
-        <p className="text-center text-sm text-gray-500 mb-8">
-          Buat akun untuk <span className="font-medium">{email}</span>
+    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+      <div className="w-full max-w-sm animate-in-fade">
+        <Link
+          href="/"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-foreground"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-brand text-brand-foreground">
+            <SparklesIcon size={14} />
+          </span>
+          CaptionSan
+        </Link>
+
+        <h1 className="display text-2xl font-semibold text-foreground">
+          Terima Undangan
+        </h1>
+        <p className="mt-1.5 text-sm text-foreground-muted">
+          Buat akun untuk{' '}
+          <span className="font-medium text-foreground">{email}</span>.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Nama
-            </label>
-            <input
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <Field label="Nama" htmlFor="name">
+            <Input
               id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              autoComplete="name"
               placeholder="Nama lengkap"
             />
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Kata Sandi
-            </label>
-            <input
+          <Field
+            label="Kata Sandi"
+            htmlFor="password"
+            hint="Minimal 8 karakter."
+          >
+            <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-              placeholder="Minimal 8 karakter"
+              autoComplete="new-password"
+              placeholder="••••••••"
             />
-          </div>
+          </Field>
 
           {error && (
-            <p className="text-sm text-red-600" role="alert">{error}</p>
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
           )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
+          <Button type="submit" loading={submitting} fullWidth size="lg">
             {submitting ? 'Memproses...' : 'Buat Akun'}
-          </button>
+          </Button>
         </form>
       </div>
     </main>

@@ -1,1 +1,159 @@
 @import "tailwindcss";
+
+/*
+ * CaptionSan visual foundation.
+ * See docs/design/visual-direction.md and
+ * .kiro/steering/visual-direction.md for the rationale.
+ *
+ * These tokens are the single source of truth for the visual system.
+ * Components must reference Tailwind utilities resolving to these
+ * tokens (e.g. bg-surface, text-foreground-muted) rather than ad-hoc
+ * hex values.
+ */
+
+@theme {
+  /* Typography. The --font-sans variable is set by next/font in layout.tsx. */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Surface ramp — warm off-white, calmer than pure white. */
+  --color-surface: oklch(0.992 0.003 95);
+  --color-surface-raised: oklch(1 0 0);
+  --color-surface-sunken: oklch(0.975 0.004 95);
+
+  /* Borders. */
+  --color-border: oklch(0.922 0.005 95);
+  --color-border-strong: oklch(0.86 0.006 95);
+
+  /* Foreground. */
+  --color-foreground: oklch(0.205 0.012 265);
+  --color-foreground-muted: oklch(0.46 0.012 265);
+  --color-foreground-subtle: oklch(0.62 0.012 265);
+
+  /* Brand. Indigo-leaning, restrained. */
+  --color-brand: oklch(0.52 0.16 265);
+  --color-brand-hover: oklch(0.46 0.17 265);
+  --color-brand-foreground: oklch(0.985 0.005 265);
+  --color-brand-soft: oklch(0.96 0.025 265);
+  --color-brand-soft-foreground: oklch(0.36 0.14 265);
+
+  /* Status — low saturation, readable on muted backgrounds. */
+  --color-success: oklch(0.55 0.13 150);
+  --color-success-soft: oklch(0.96 0.04 150);
+  --color-warning: oklch(0.62 0.14 75);
+  --color-warning-soft: oklch(0.96 0.05 85);
+  --color-danger: oklch(0.55 0.18 25);
+  --color-danger-soft: oklch(0.96 0.04 25);
+
+  /* Radius. */
+  --radius-xs: 0.375rem; /* 6 */
+  --radius-sm: 0.5rem;   /* 8 */
+  --radius-md: 0.625rem; /* 10 */
+  --radius-lg: 0.875rem; /* 14 */
+
+  /* Shadow — only three levels, all subtle. */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm:
+    0 1px 2px 0 rgba(15, 23, 42, 0.04),
+    0 1px 3px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md:
+    0 4px 12px -2px rgba(15, 23, 42, 0.06),
+    0 2px 4px -1px rgba(15, 23, 42, 0.04);
+}
+
+/*
+ * Base element styling. Keeps existing pages compatible while making the
+ * default surface, foreground, and font reflect the new direction.
+ */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tighter tracking on display sizes per visual direction. */
+  h1,
+  h2,
+  h3,
+  .display {
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  /* Quiet, consistent focus ring tied to the brand token. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * Motion. Subtle, purposeful transitions per Task 6.
+ * Animations respect prefers-reduced-motion automatically because the
+ * media query below disables them entirely.
+ */
+@layer utilities {
+  @keyframes captionsan-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes captionsan-slide-left {
+    from {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes captionsan-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-in-fade {
+    animation: captionsan-fade-in 220ms ease-out both;
+  }
+
+  .animate-in-slide-left {
+    animation: captionsan-slide-left 200ms ease-out both;
+  }
+
+  .animate-in-pop {
+    animation: captionsan-pop 160ms ease-out both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

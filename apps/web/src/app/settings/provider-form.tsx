@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Field, Input } from '@/components/ui/input';
+import { CheckCircleIcon, XIcon } from '@/components/ui/icons';
 
 interface ProviderFormProps {
   editId?: string;
@@ -15,33 +18,48 @@ interface ProviderFormProps {
   onCancel: () => void;
 }
 
-export function ProviderForm({ editId, initialData, onSaved, onCancel }: ProviderFormProps) {
-  const [providerName, setProviderName] = useState(initialData?.providerName || 'OpenAI');
-  const [baseUrl, setBaseUrl] = useState(initialData?.baseUrl || 'https://api.openai.com/v1');
+export function ProviderForm({
+  editId,
+  initialData,
+  onSaved,
+  onCancel,
+}: ProviderFormProps) {
+  const [providerName, setProviderName] = useState(
+    initialData?.providerName || 'OpenAI',
+  );
+  const [baseUrl, setBaseUrl] = useState(
+    initialData?.baseUrl || 'https://api.openai.com/v1',
+  );
   const [model, setModel] = useState(initialData?.model || 'gpt-4o-mini');
   const [apiKey, setApiKey] = useState('');
   const [isDefault, setIsDefault] = useState(initialData?.isDefault ?? true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   const handleTest = async () => {
     if (!baseUrl || !apiKey) {
-      setTestResult({ success: false, message: 'Base URL dan API Key diperlukan untuk test' });
+      setTestResult({
+        success: false,
+        message: 'Base URL dan API Key diperlukan untuk test',
+      });
       return;
     }
 
     setTesting(true);
     setTestResult(null);
 
-    const { data, error: fetchError } = await apiFetch<{ success: boolean; message: string }>(
-      '/api/providers/test-inline',
-      {
-        method: 'POST',
-        body: JSON.stringify({ baseUrl, apiKey }),
-      }
-    );
+    const { data, error: fetchError } = await apiFetch<{
+      success: boolean;
+      message: string;
+    }>('/api/providers/test-inline', {
+      method: 'POST',
+      body: JSON.stringify({ baseUrl, apiKey }),
+    });
 
     if (data) {
       setTestResult({ success: data.success, message: data.message });
@@ -63,7 +81,6 @@ export function ProviderForm({ editId, initialData, onSaved, onCancel }: Provide
       isDefault,
     };
 
-    // API key is required for new connections, optional for edits
     if (apiKey) {
       payload.apiKey = apiKey;
     } else if (!editId) {
@@ -80,128 +97,113 @@ export function ProviderForm({ editId, initialData, onSaved, onCancel }: Provide
       body: JSON.stringify(payload),
     });
 
-    if (fetchError) {
-      setError(fetchError);
-    } else {
-      onSaved();
-    }
+    if (fetchError) setError(fetchError);
+    else onSaved();
     setSubmitting(false);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="providerName" className="block text-sm font-medium text-gray-700 mb-1">
-            Nama Provider
-          </label>
-          <input
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Nama Provider" htmlFor="providerName">
+          <Input
             id="providerName"
             type="text"
             value={providerName}
             onChange={(e) => setProviderName(e.target.value)}
             required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             placeholder="OpenAI"
           />
-        </div>
-
-        <div>
-          <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-1">
-            Model
-          </label>
-          <input
+        </Field>
+        <Field label="Model" htmlFor="model">
+          <Input
             id="model"
             type="text"
             value={model}
             onChange={(e) => setModel(e.target.value)}
             required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             placeholder="gpt-4o-mini"
           />
-        </div>
+        </Field>
       </div>
 
-      <div>
-        <label htmlFor="baseUrl" className="block text-sm font-medium text-gray-700 mb-1">
-          Base URL
-        </label>
-        <input
+      <Field label="Base URL" htmlFor="baseUrl">
+        <Input
           id="baseUrl"
           type="url"
           value={baseUrl}
           onChange={(e) => setBaseUrl(e.target.value)}
           required
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
           placeholder="https://api.openai.com/v1"
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-1">
-          API Key {editId && <span className="text-gray-400">(kosongkan jika tidak ingin mengubah)</span>}
-        </label>
-        <input
+      <Field
+        label="API Key"
+        htmlFor="apiKey"
+        hint={
+          editId ? 'Kosongkan jika tidak ingin mengubah.' : undefined
+        }
+      >
+        <Input
           id="apiKey"
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           required={!editId}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
           placeholder="sk-..."
+          autoComplete="off"
         />
-      </div>
+      </Field>
 
-      <div className="flex items-center gap-2">
+      <label className="flex items-center gap-2 text-sm text-foreground-muted">
         <input
-          id="isDefault"
           type="checkbox"
           checked={isDefault}
           onChange={(e) => setIsDefault(e.target.checked)}
-          className="rounded border-gray-300"
+          className="h-4 w-4 rounded-sm border-border-strong accent-brand"
         />
-        <label htmlFor="isDefault" className="text-sm text-gray-700">
-          Jadikan default
-        </label>
-      </div>
+        Jadikan default
+      </label>
 
       {testResult && (
         <div
-          className={`rounded p-2 text-xs ${
-            testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-          }`}
+          className={
+            testResult.success
+              ? 'flex items-start gap-2 rounded-sm border border-success/30 bg-success-soft px-3 py-2 text-xs text-success'
+              : 'flex items-start gap-2 rounded-sm border border-danger/30 bg-danger-soft px-3 py-2 text-xs text-danger'
+          }
         >
-          {testResult.message}
+          {testResult.success ? (
+            <CheckCircleIcon size={14} />
+          ) : (
+            <XIcon size={14} />
+          )}
+          <span>{testResult.message}</span>
         </div>
       )}
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">{error}</p>
+        <p className="text-sm text-danger" role="alert">
+          {error}
+        </p>
       )}
 
-      <div className="flex gap-2">
-        <button
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        <Button
           type="button"
+          variant="secondary"
           onClick={handleTest}
-          disabled={testing}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          loading={testing}
         >
           {testing ? 'Testing...' : 'Test Koneksi'}
-        </button>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
-        >
+        </Button>
+        <Button type="submit" loading={submitting}>
           {submitting ? 'Menyimpan...' : editId ? 'Perbarui' : 'Simpan'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-        >
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           Batal
-        </button>
+        </Button>
       </div>
     </form>
   );

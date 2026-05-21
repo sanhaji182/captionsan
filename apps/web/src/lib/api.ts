@@ -26,3 +26,37 @@ export async function apiFetch<T>(
     return { error: message, status: 0 };
   }
 }
+
+// Prompt API helpers
+
+export async function generatePrompt(projectId: string) {
+  return apiFetch<{ promptDraft: unknown }>(`/api/projects/${projectId}/prompt/generate`, {
+    method: 'POST',
+  });
+}
+
+export async function fetchPromptDraft(projectId: string) {
+  return apiFetch<{ promptDraft: unknown; revisions: unknown[] }>(
+    `/api/projects/${projectId}/prompt`
+  );
+}
+
+export async function editPrompt(projectId: string, promptText: string) {
+  return apiFetch(`/api/projects/${projectId}/prompt/edit`, {
+    method: 'PUT',
+    body: JSON.stringify({ promptText }),
+  });
+}
+
+export async function revisePrompt(projectId: string, instruction: string) {
+  return apiFetch(`/api/projects/${projectId}/prompt/revise`, {
+    method: 'POST',
+    body: JSON.stringify({ instruction }),
+  });
+}
+
+export async function approvePrompt(projectId: string) {
+  return apiFetch(`/api/projects/${projectId}/prompt/approve`, {
+    method: 'POST',
+  });
+}

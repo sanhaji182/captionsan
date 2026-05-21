@@ -1,54 +1,99 @@
 'use client';
 
-import { useSession } from '@/lib/auth-client';
+import { useState } from 'react';
+import { AppShell } from '@/components/app-shell';
+import { PageHeader } from '@/components/page-header';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/cn';
 import { ProviderList } from './provider-list';
 import { ApiTokenList } from './api-tokens';
+import { BrandVoiceList } from './brand-voice-list';
+import { TemplateList } from './template-list';
+
+type SettingsTab = 'voice' | 'templates' | 'providers' | 'tokens';
+
+const TABS: Array<{
+  id: SettingsTab;
+  label: string;
+  description: string;
+  render: () => React.ReactNode;
+}> = [
+  {
+    id: 'voice',
+    label: 'Brand Voice',
+    description:
+      'Profil tone dan gaya penulisan agar konten yang dihasilkan AI tetap konsisten.',
+    render: () => <BrandVoiceList />,
+  },
+  {
+    id: 'templates',
+    label: 'Prompt Template',
+    description:
+      'Template prompt yang bisa digunakan ulang. Gunakan placeholder untuk bagian yang berubah.',
+    render: () => <TemplateList />,
+  },
+  {
+    id: 'providers',
+    label: 'AI Provider',
+    description:
+      'Konfigurasi provider AI Anda. Mendukung provider yang kompatibel dengan OpenAI API.',
+    render: () => <ProviderList />,
+  },
+  {
+    id: 'tokens',
+    label: 'API Token',
+    description:
+      'Token untuk mengakses CaptionSan API dari pipeline atau aplikasi eksternal.',
+    render: () => <ApiTokenList />,
+  },
+];
 
 export default function SettingsPage() {
-  const { data: session, isPending } = useSession();
-
-  if (isPending) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Memuat...</p>
-      </main>
-    );
-  }
-
-  if (!session) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
-    return null;
-  }
+  const [activeTab, setActiveTab] = useState<SettingsTab>('voice');
+  const tab = TABS.find((t) => t.id === activeTab) ?? TABS[0];
 
   return (
-    <main className="min-h-screen p-8 max-w-3xl mx-auto">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold">Pengaturan</h1>
-        <a
-          href="/dashboard"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
-        >
-          Kembali
-        </a>
-      </header>
+    <AppShell>
+      <PageHeader
+        eyebrow="Pengelolaan"
+        title="Pengaturan"
+        description="Atur brand voice, template, provider AI, dan akses API."
+      />
 
-      <section className="mb-10">
-        <h2 className="text-lg font-semibold mb-4">Koneksi AI Provider</h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Tambahkan konfigurasi provider AI Anda. CaptionSan mendukung provider yang kompatibel dengan OpenAI API.
-        </p>
-        <ProviderList />
-      </section>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
+        <nav aria-label="Pengaturan">
+          <ul className="flex flex-row gap-1 overflow-x-auto rounded-md border border-border bg-surface-raised p-1 shadow-xs lg:flex-col">
+            {TABS.map((t) => {
+              const active = t.id === activeTab;
+              return (
+                <li key={t.id} className="shrink-0 lg:shrink">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(t.id)}
+                    className={cn(
+                      'w-full whitespace-nowrap rounded-sm px-3 py-2 text-left text-sm font-medium transition-colors duration-150',
+                      active
+                        ? 'bg-brand-soft text-brand-soft-foreground'
+                        : 'text-foreground-muted hover:bg-surface-sunken hover:text-foreground',
+                    )}
+                    aria-current={active ? 'page' : undefined}
+                  >
+                    {t.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      <section>
-        <h2 className="text-lg font-semibold mb-4">API Token</h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Buat token untuk mengakses CaptionSan API dari pipeline atau aplikasi eksternal.
-        </p>
-        <ApiTokenList />
-      </section>
-    </main>
+        <Card padded className="animate-in-fade">
+          <div className="mb-5 border-b border-border pb-4">
+            <CardTitle>{tab.label}</CardTitle>
+            <CardDescription>{tab.description}</CardDescription>
+          </div>
+          {tab.render()}
+        </Card>
+      </div>
+    </AppShell>
   );
 }

@@ -1,48 +1,42 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from '@/lib/auth-client';
+import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { AppShell } from '@/components/app-shell';
+import { PageHeader } from '@/components/page-header';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Field, Input, Textarea } from '@/components/ui/input';
+import { ArrowLeftIcon } from '@/components/ui/icons';
+import { cn } from '@/lib/cn';
+
+type SourceType = 'idea' | 'draft';
 
 export default function NewProjectPage() {
-  const { data: session, isPending } = useSession();
   const [title, setTitle] = useState('');
-  const [sourceType, setSourceType] = useState<'idea' | 'draft'>('idea');
+  const [sourceType, setSourceType] = useState<SourceType>('idea');
   const [originalInput, setOriginalInput] = useState('');
   const [additionalContext, setAdditionalContext] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  if (isPending) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Memuat...</p>
-      </main>
-    );
-  }
-
-  if (!session) {
-    if (typeof window !== 'undefined') window.location.href = '/login';
-    return null;
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
 
-    const { data, error: fetchError } = await apiFetch<{ project: { id: string } }>(
-      '/api/projects',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          title,
-          sourceType,
-          originalInput,
-          additionalContext: additionalContext || undefined,
-        }),
-      }
-    );
+    const { data, error: fetchError } = await apiFetch<{
+      project: { id: string };
+    }>('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        sourceType,
+        originalInput,
+        additionalContext: additionalContext || undefined,
+      }),
+    });
 
     if (fetchError) {
       setError(fetchError);
@@ -53,108 +47,134 @@ export default function NewProjectPage() {
   };
 
   return (
-    <main className="min-h-screen p-8 max-w-2xl mx-auto">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold">Proyek Baru</h1>
-        <a
-          href="/dashboard"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
-        >
-          Kembali
-        </a>
-      </header>
+    <AppShell>
+      <PageHeader
+        eyebrow="Proyek"
+        title="Proyek Baru"
+        description="Mulai dari satu ide atau draft kasar. CaptionSan akan menyiapkan prompt sebelum membuat konten."
+        actions={
+          <Link href="/dashboard">
+            <Button variant="secondary" size="md">
+              <ArrowLeftIcon size={14} />
+              Kembali
+            </Button>
+          </Link>
+        }
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-            Judul Proyek
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-            placeholder="Contoh: Promo Akhir Tahun"
-          />
-        </div>
+      <Card padded>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Field label="Judul Proyek" htmlFor="title">
+            <Input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              placeholder="Contoh: Promo Akhir Tahun"
+            />
+          </Field>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tipe Input
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="sourceType"
-                value="idea"
-                checked={sourceType === 'idea'}
-                onChange={() => setSourceType('idea')}
-                className="text-gray-900"
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-foreground">
+              Tipe Input
+            </legend>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SourceCard
+                active={sourceType === 'idea'}
+                title="Ide / Poin Utama"
+                description="Beberapa kalimat poin yang ingin disampaikan."
+                onClick={() => setSourceType('idea')}
               />
-              <span className="text-sm">Ide / Poin Utama</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="sourceType"
-                value="draft"
-                checked={sourceType === 'draft'}
-                onChange={() => setSourceType('draft')}
-                className="text-gray-900"
+              <SourceCard
+                active={sourceType === 'draft'}
+                title="Draft Kasar"
+                description="Tulisan kasar yang ingin dirapikan untuk berbagai platform."
+                onClick={() => setSourceType('draft')}
               />
-              <span className="text-sm">Draft Kasar</span>
-            </label>
+            </div>
+          </fieldset>
+
+          <Field
+            label={sourceType === 'idea' ? 'Ide Utama' : 'Draft Kasar'}
+            htmlFor="originalInput"
+          >
+            <Textarea
+              id="originalInput"
+              value={originalInput}
+              onChange={(e) => setOriginalInput(e.target.value)}
+              required
+              rows={8}
+              placeholder={
+                sourceType === 'idea'
+                  ? 'Tulis ide utama atau poin-poin yang ingin disampaikan...'
+                  : 'Tulis draft kasar konten Anda di sini...'
+              }
+            />
+          </Field>
+
+          <Field
+            label="Konteks Tambahan"
+            htmlFor="additionalContext"
+            optional
+            hint="Target audiens, tone yang diinginkan, atau informasi brand."
+          >
+            <Textarea
+              id="additionalContext"
+              value={additionalContext}
+              onChange={(e) => setAdditionalContext(e.target.value)}
+              rows={3}
+              placeholder="Target audiens, tone yang diinginkan, informasi brand, dll."
+            />
+          </Field>
+
+          {error && (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="flex items-center justify-end gap-2 border-t border-border pt-5">
+            <Link href="/dashboard">
+              <Button variant="ghost" type="button">
+                Batal
+              </Button>
+            </Link>
+            <Button type="submit" loading={submitting}>
+              {submitting ? 'Membuat proyek...' : 'Buat Proyek'}
+            </Button>
           </div>
-        </div>
+        </form>
+      </Card>
+    </AppShell>
+  );
+}
 
-        <div>
-          <label htmlFor="originalInput" className="block text-sm font-medium text-gray-700 mb-1">
-            {sourceType === 'idea' ? 'Ide Utama' : 'Draft Kasar'}
-          </label>
-          <textarea
-            id="originalInput"
-            value={originalInput}
-            onChange={(e) => setOriginalInput(e.target.value)}
-            required
-            rows={8}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 resize-y"
-            placeholder={
-              sourceType === 'idea'
-                ? 'Tulis ide utama atau poin-poin yang ingin disampaikan...'
-                : 'Tulis draft kasar konten Anda di sini...'
-            }
-          />
-        </div>
-
-        <div>
-          <label htmlFor="additionalContext" className="block text-sm font-medium text-gray-700 mb-1">
-            Konteks Tambahan <span className="text-gray-400">(opsional)</span>
-          </label>
-          <textarea
-            id="additionalContext"
-            value={additionalContext}
-            onChange={(e) => setAdditionalContext(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 resize-y"
-            placeholder="Target audiens, tone yang diinginkan, informasi brand, dll."
-          />
-        </div>
-
-        {error && (
-          <p className="text-sm text-red-600" role="alert">{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
-        >
-          {submitting ? 'Membuat proyek...' : 'Buat Proyek'}
-        </button>
-      </form>
-    </main>
+function SourceCard({
+  active,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'rounded-md border bg-surface-raised p-4 text-left transition-[border-color,box-shadow] duration-150 ease-out',
+        active
+          ? 'border-brand ring-2 ring-brand/20'
+          : 'border-border hover:border-border-strong',
+      )}
+    >
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-xs text-foreground-muted">{description}</p>
+    </button>
   );
 }

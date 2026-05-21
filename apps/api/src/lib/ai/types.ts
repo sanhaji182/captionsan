@@ -46,4 +46,5 @@ export interface GenerationInput {
   sourceType: 'idea' | 'draft';
   additionalContext?: string;
   platforms: Platform[];
+  approvedPrompt?: string;
 }

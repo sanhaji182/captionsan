@@ -6,12 +6,15 @@ import {
   platformOutputs,
   providerConnections,
   revisionMessages,
+  brandVoices,
 } from '@captionsan/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
 import { decrypt } from '../lib/encryption.js';
 import { AIClient, buildRevisionPrompt } from '../lib/ai/index.js';
 import type { Platform } from '../lib/ai/index.js';
+import type { BrandVoiceInput } from '../lib/ai/prompt-generator.js';
+import { recordContentSnapshot } from './version-history.js';
 
 export const revisionRoutes = new Hono();
 
@@ -85,11 +88,37 @@ revisionRoutes.post('/:outputId/revise', requireAuth, async (c) => {
     return c.json({ error: 'No provider connection available' }, 400);
   }
 
+  // Fetch user's default brand voice (if any)
+  const [defaultBrandVoice] = await db
+    .select()
+    .from(brandVoices)
+    .where(
+      and(
+        eq(brandVoices.userId, user.id),
+        eq(brandVoices.isDefault, true)
+      )
+    )
+    .limit(1);
+
+  const brandVoiceInput: BrandVoiceInput | undefined = defaultBrandVoice
+    ? {
+        name: defaultBrandVoice.name,
+        tone: defaultBrandVoice.tone,
+        styleRules: defaultBrandVoice.styleRules,
+        audience: defaultBrandVoice.audience,
+        bannedWords: (defaultBrandVoice.bannedWords as string[]) || [],
+        ctaPreferences: defaultBrandVoice.ctaPreferences,
+        languageStyle: defaultBrandVoice.languageStyle,
+        contentLengthGuidance: defaultBrandVoice.contentLengthGuidance,
+      }
+    : undefined;
+
   // Build revision prompt
   const messages = buildRevisionPrompt(
     output.contentCurrent,
     body.instruction,
-    output.platform as Platform
+    output.platform as Platform,
+    brandVoiceInput
   );
 
   // Call AI
@@ -122,6 +151,18 @@ revisionRoutes.post('/:outputId/revise', requireAuth, async (c) => {
         updatedAt: new Date(),
       })
       .where(eq(platformOutputs.id, output.id));
+
+    // Record content version snapshot
+    await recordContentSnapshot({
+      outputId: output.id,
+      projectId: project.id,
+      content: revisedContent,
+      actorType: 'ai',
+      label: 'Revisi AI',
+      status: 'draft',
+      platform: output.platform,
+      metadata: { instructionText: body.instruction },
+    });
 
     return c.json({
       revised: true,
@@ -192,6 +233,17 @@ revisionRoutes.put('/:outputId/edit', requireAuth, async (c) => {
       updatedAt: new Date(),
     })
     .where(eq(platformOutputs.id, output.id));
+
+  // Record content version snapshot for manual edit
+  await recordContentSnapshot({
+    outputId: output.id,
+    projectId: project.id,
+    content: body.content,
+    actorType: 'user',
+    label: 'Edit Manual',
+    status: output.approvalStatus,
+    platform: output.platform,
+  });
 
   return c.json({
     updated: true,

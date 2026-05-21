@@ -2,6 +2,18 @@
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Field, Textarea } from '@/components/ui/input';
+import {
+  CheckIcon,
+  ClipboardIcon,
+  EyeIcon,
+  HistoryIcon,
+  PenIcon,
+  SparklesIcon,
+} from '@/components/ui/icons';
+import { VersionHistory } from './version-history';
 
 interface PlatformOutput {
   id: string;
@@ -19,18 +31,27 @@ interface PlatformOutput {
 
 interface OutputCardProps {
   output: PlatformOutput;
+  projectId: string;
   platformLabel: string;
   onUpdated: () => void;
 }
 
-export function OutputCard({ output, platformLabel, onUpdated }: OutputCardProps) {
+export function OutputCard({
+  output,
+  projectId,
+  platformLabel,
+  onUpdated,
+}: OutputCardProps) {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(output.contentCurrent);
   const [revisionInstruction, setRevisionInstruction] = useState('');
   const [showRevisionForm, setShowRevisionForm] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const isApproved = output.approvalStatus === 'approved';
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(output.contentCurrent);
@@ -64,137 +85,202 @@ export function OutputCard({ output, platformLabel, onUpdated }: OutputCardProps
 
   const handleApprove = async () => {
     setLoading(true);
-    await apiFetch(`/api/outputs/${output.id}/approve`, {
-      method: 'POST',
-    });
+    await apiFetch(`/api/outputs/${output.id}/approve`, { method: 'POST' });
     setLoading(false);
     onUpdated();
   };
 
-  const isApproved = output.approvalStatus === 'approved';
-
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className="font-medium">{platformLabel}</h3>
-          <span className="text-xs text-gray-400">{output.characterCount} karakter</span>
+    <article className="rounded-md border border-border bg-surface-raised shadow-xs animate-in-fade">
+      {/* Header */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            {platformLabel}
+          </h3>
+          <span className="text-xs text-foreground-subtle">
+            {output.characterCount} karakter
+          </span>
           {isApproved && (
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+            <Badge tone="success" dot>
               Disetujui
-            </span>
+            </Badge>
           )}
         </div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => setShowOriginal(!showOriginal)}
-            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            {showOriginal ? 'Sembunyikan Asli' : 'Lihat Asli'}
-          </button>
-          <button
-            onClick={handleCopy}
-            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            {copied ? '✓ Disalin' : 'Salin'}
-          </button>
+        <div className="flex items-center gap-1">
+          {output.contentOriginalAi !== output.contentCurrent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowOriginal(!showOriginal)}
+            >
+              <EyeIcon size={14} />
+              {showOriginal ? 'Sembunyikan Asli' : 'Lihat Asli'}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={handleCopy}>
+            {copied ? (
+              <>
+                <CheckIcon size={14} />
+                Disalin
+              </>
+            ) : (
+              <>
+                <ClipboardIcon size={14} />
+                Salin
+              </>
+            )}
+          </Button>
         </div>
+      </header>
+
+      <div className="px-5 py-4">
+        {/* Original AI output for comparison */}
+        {showOriginal && output.contentOriginalAi !== output.contentCurrent && (
+          <div className="mb-4 rounded-sm border border-border bg-surface-sunken px-4 py-3 animate-in-fade">
+            <p className="text-xs font-medium uppercase tracking-wider text-foreground-subtle">
+              Output AI Asli
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground-muted">
+              {output.contentOriginalAi}
+            </p>
+          </div>
+        )}
+
+        {/* Current content */}
+        {editing ? (
+          <div className="space-y-3">
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={6}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleSaveEdit} loading={loading}>
+                {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditing(false);
+                  setEditContent(output.contentCurrent);
+                }}
+              >
+                Batal
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            {output.contentCurrent}
+          </p>
+        )}
+
+        {/* Revision form */}
+        {showRevisionForm && !editing && (
+          <div className="mt-4 border-t border-border pt-4 animate-in-fade">
+            <Field
+              label="Instruksi revisi"
+              htmlFor={`revise-${output.id}`}
+              hint="Contoh: buat lebih singkat, tambah emoji, ubah tone jadi lebih formal."
+            >
+              <Textarea
+                id={`revise-${output.id}`}
+                value={revisionInstruction}
+                onChange={(e) => setRevisionInstruction(e.target.value)}
+                rows={2}
+                placeholder="Tulis instruksi revisi..."
+              />
+            </Field>
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={handleRevise}
+                loading={loading}
+                disabled={!revisionInstruction.trim()}
+              >
+                <SparklesIcon size={14} />
+                {loading ? 'Merevisi...' : 'Revisi dengan AI'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowRevisionForm(false)}
+              >
+                Batal
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Show original AI output for comparison */}
-      {showOriginal && output.contentOriginalAi !== output.contentCurrent && (
-        <div className="mb-3 rounded bg-gray-50 p-3 border border-gray-100">
-          <p className="text-xs font-medium text-gray-400 mb-1">Output AI Asli</p>
-          <p className="whitespace-pre-wrap text-sm text-gray-600">
-            {output.contentOriginalAi}
-          </p>
-        </div>
+      {/* Action footer */}
+      {!editing && !showRevisionForm && (
+        <footer className="flex items-center justify-between gap-2 border-t border-border bg-surface px-5 py-3">
+          {!isApproved ? (
+            <>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+                  <PenIcon size={14} />
+                  Edit Manual
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRevisionForm(true)}
+                >
+                  <SparklesIcon size={14} />
+                  Revisi AI
+                </Button>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(!showHistory)}
+                >
+                  <HistoryIcon size={14} />
+                  {showHistory ? 'Tutup Riwayat' : 'Riwayat'}
+                </Button>
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={handleApprove}
+                  loading={loading}
+                >
+                  <CheckIcon size={14} />
+                  Setujui
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex w-full items-center justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                <HistoryIcon size={14} />
+                {showHistory ? 'Tutup Riwayat' : 'Riwayat'}
+              </Button>
+            </div>
+          )}
+        </footer>
       )}
 
-      {/* Current content */}
-      {editing ? (
-        <div className="space-y-2">
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            rows={6}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 resize-y"
+      {/* History */}
+      {showHistory && (
+        <div className="border-t border-border px-5 py-4 animate-in-fade">
+          <VersionHistory
+            projectId={projectId}
+            entityType="content"
+            entityId={output.id}
+            canRestore={!isApproved}
+            onRestored={onUpdated}
           />
-          <div className="flex gap-2">
-            <button
-              onClick={handleSaveEdit}
-              disabled={loading}
-              className="rounded bg-gray-900 px-3 py-1 text-xs text-white hover:bg-gray-800 disabled:opacity-50"
-            >
-              {loading ? 'Menyimpan...' : 'Simpan'}
-            </button>
-            <button
-              onClick={() => {
-                setEditing(false);
-                setEditContent(output.contentCurrent);
-              }}
-              className="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50"
-            >
-              Batal
-            </button>
-          </div>
-        </div>
-      ) : (
-        <p className="whitespace-pre-wrap text-sm mb-3">{output.contentCurrent}</p>
-      )}
-
-      {/* Revision form */}
-      {showRevisionForm && !editing && (
-        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-          <textarea
-            value={revisionInstruction}
-            onChange={(e) => setRevisionInstruction(e.target.value)}
-            rows={2}
-            placeholder="Tulis instruksi revisi... (contoh: buat lebih singkat, tambah emoji, ubah tone jadi lebih formal)"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 resize-y"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleRevise}
-              disabled={loading || !revisionInstruction.trim()}
-              className="rounded bg-gray-900 px-3 py-1 text-xs text-white hover:bg-gray-800 disabled:opacity-50"
-            >
-              {loading ? 'Merevisi...' : 'Revisi dengan AI'}
-            </button>
-            <button
-              onClick={() => setShowRevisionForm(false)}
-              className="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50"
-            >
-              Batal
-            </button>
-          </div>
         </div>
       )}
-
-      {/* Action buttons */}
-      {!editing && !showRevisionForm && !isApproved && (
-        <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-          <button
-            onClick={() => setEditing(true)}
-            className="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50 transition-colors"
-          >
-            Edit Manual
-          </button>
-          <button
-            onClick={() => setShowRevisionForm(true)}
-            className="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50 transition-colors"
-          >
-            Revisi AI
-          </button>
-          <button
-            onClick={handleApprove}
-            disabled={loading}
-            className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
-          >
-            Setujui
-          </button>
-        </div>
-      )}
-    </div>
+    </article>
   );
 }
